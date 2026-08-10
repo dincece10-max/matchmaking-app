@@ -1,0 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Aug 10 16:54:39 2026
+
+@author: User
+"""
+
+Flask
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+gunicorn

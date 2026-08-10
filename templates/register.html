@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Your Startup</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: rgb(244, 246, 249); 
+            padding: 40px; 
+            margin: 0; 
+        }
+        .form-card { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+        }
+        h2 { 
+            margin-top: 0; 
+            color: rgb(26, 26, 26); 
+        }
+        p { 
+            color: rgb(102, 102, 102); 
+        }
+        .input-group { 
+            margin-bottom: 15px; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: rgb(51, 51, 51); 
+        }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 14px; 
+        }
+        .btn { 
+            background: rgb(79, 70, 229); 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            width: 100%; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            font-size: 16px; 
+            cursor: pointer; 
+        }
+        .btn:hover { 
+            background: rgb(67, 56, 202); 
+        }
+        .alert-success { 
+            background: rgb(209, 250, 229); 
+            color: rgb(6, 95, 70); 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-weight: bold; 
+        }
+        .alert-error { 
+            background: rgb(254, 226, 226); 
+            color: rgb(153, 27, 27); 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            font-weight: bold; 
+        }
+        a { 
+            color: rgb(79, 70, 229); 
+            text-decoration: none; 
+            font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="form-card">
+    <h2>🚀 Register Your Startup</h2>
+    <p>Fill in details to participate in upcoming matchmaking sessions.</p>
+
+    {% if success %}
+    <div class="alert-success">
+        ✅ Application submitted! Your listing will be reviewed by the admin before going live.
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert-error">
+        ❌ Submission Error: {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/register" method="POST">
+        <div class="input-group">
+            <label>Startup Name</label>
+            <input type="text" name="name" required placeholder="e.g. Acme AI">
+        </div>
+        <div class="input-group">
+            <label>Category</label>
+            <input type="text" name="category" required placeholder="e.g. SaaS / CleanTech">
+        </div>
+        <div class="input-group">
+            <label>Funding Stage Seeking</label>
+            <select name="funding_stage">
+                <option value="Pre-Seed ($50k - $150k)">Pre-Seed ($50k - $150k)</option>
+                <option value="Seed ($250k - $500k)">Seed ($250k - $500k)</option>
+                <option value="Series A ($1M+)">Series A ($1M+)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>Founder Contact Email</label>
+            <input type="email" name="founder_email" required placeholder="founder@example.com">
+        </div>
+        <div class="input-group">
+            <label>Short Description (1-2 sentences)</label>
+            <textarea name="description" rows="3" required placeholder="Describe what your startup does..."></textarea>
+        </div>
+        <button type="submit" class="btn">Submit Application</button>
+    </form>
+    <br>
+    <a href="/">← Back to Directory</a>
+</div>
+
+</body>
+</html>

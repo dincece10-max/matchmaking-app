@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Approval Dashboard</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: rgb(244, 246, 249); 
+            padding: 40px; 
+            margin: 0;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+        }
+        h1 { color: rgb(26, 26, 26); }
+        h2 { color: rgb(51, 51, 51); margin-top: 30px; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background: white; 
+            margin-bottom: 30px; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+        }
+        th, td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }
+        th { 
+            background: rgb(79, 70, 229); 
+            color: white; 
+        }
+        .btn-approve { 
+            background: rgb(16, 185, 129); 
+            color: white; 
+            padding: 8px 14px; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            display: inline-block;
+        }
+        .btn-approve:hover {
+            background: rgb(5, 150, 105);
+        }
+        a { color: rgb(79, 70, 229); font-weight: bold; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛡️ Admin Approval Dashboard</h1>
+    <p>Review submitted startup applications before publishing them to investors.</p>
+
+    <h2>⏳ Pending Submissions ({{ pending|length }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Startup</th>
+                <th>Category</th>
+                <th>Stage</th>
+                <th>Email</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in pending %}
+            <tr>
+                <td><strong>{{ s.name }}</strong><br><small>{{ s.description }}</small></td>
+                <td>{{ s.category }}</td>
+                <td>{{ s.funding_stage }}</td>
+                <td>{{ s.founder_email }}</td>
+                <td><a href="/admin/approve?id={{ s.id }}" class="btn-approve">Approve ✅</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">No pending applications right now.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>✅ Currently Live Submissions ({{ approved|length }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Startup</th>
+                <th>Category</th>
+                <th>Stage</th>
+                <th>Email</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in approved %}
+            <tr>
+                <td><strong>{{ s.name }}</strong></td>
+                <td>{{ s.category }}</td>
+                <td>{{ s.funding_stage }}</td>
+                <td>{{ s.founder_email }}</td>
+                <td><span style="color: green; font-weight: bold;">LIVE</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">No approved applications yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/">Go to Public Directory →</a>
+</div>
+
+</body>
+</html>
