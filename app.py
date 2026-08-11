@@ -15,7 +15,7 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Users Table (Supports both Founders and Investors)
+    # Users Table (Supports Founders and Investors)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,11 +23,11 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role TEXT NOT NULL, -- 'founder' or 'investor'
-            firm_name TEXT     -- Applicable for investors/funds
+            firm_name TEXT
         )
     ''')
 
-    # Startups Table (Linked to Founder User ID)
+    # Startups Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS startups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +41,7 @@ def init_db():
         )
     ''')
     
-    # Bookings Table (Links Investor to Startup)
+    # Bookings Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,8 +58,16 @@ def init_db():
 
 init_db()
 
-# --- AUTHENTICATION ROUTES ---
+# --- BACKWARD COMPATIBILITY REDIRECTS ---
+@app.route('/register')
+def register_redirect():
+    return redirect(url_for('signup'))
 
+@app.route('/admin')
+def admin_redirect():
+    return redirect(url_for('login'))
+
+# --- AUTHENTICATION ROUTES ---
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -80,7 +88,6 @@ def signup():
             ''', (name, email, hashed_password, role, firm_name))
             user_id = cursor.lastrowid
 
-            # If user is a founder, also create their startup record
             if role == 'founder':
                 company_name = request.form.get('company_name')
                 category = request.form.get('category')
@@ -130,13 +137,11 @@ def logout():
 
 
 # --- MAIN DIRECTORY ROUTE ---
-
 @app.route('/')
 def index():
     conn = get_db_connection()
     startups = conn.execute('SELECT * FROM startups WHERE approved = 1').fetchall()
     
-    # If logged in as Founder, fetch their bookings from investors
     my_bookings = []
     if session.get('role') == 'founder':
         founder_startup = conn.execute('SELECT id FROM startups WHERE user_id = ?', (session['user_id'],)).fetchone()
@@ -162,15 +167,17 @@ def index():
 
 
 # --- BOOKING API ROUTE ---
-
 @app.route('/api/book-meeting', methods=['POST'])
 def book_meeting():
     if 'user_id' not in session or session.get('role') != 'investor':
-        return jsonify({"success": False, "error": "Only logged-in investors can book meetings. Please sign in as an investor."})
+        return jsonify({"success": False, "error": "Only logged-in investors can book meetings. Please log in or sign up as an investor."})
 
     data = request.get_json()
     startup_id = data.get('startup_id')
     selected_time = data.get('time_slot')
+
+    if not startup_id or not selected_time:
+        return jsonify({"success": False, "error": "Startup ID and time slot are required."})
 
     conn = get_db_connection()
     startup = conn.execute('SELECT * FROM startups WHERE id = ?', (startup_id,)).fetchone()
@@ -179,7 +186,6 @@ def book_meeting():
         conn.close()
         return jsonify({"success": False, "error": "Startup not found."})
 
-    # Record booking linked to investor ID
     conn.execute('INSERT INTO bookings (startup_id, investor_id, time_slot) VALUES (?, ?, ?)',
                  (startup_id, session['user_id'], selected_time))
     conn.commit()

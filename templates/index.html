@@ -35,6 +35,7 @@
         .nav-buttons {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
         .btn-register {
             background-color: rgb(79, 70, 229);
@@ -44,7 +45,6 @@
             border-radius: 8px;
             font-weight: 600;
             display: inline-block;
-            transition: background 0.2s ease;
         }
         .btn-register:hover {
             background-color: rgb(67, 56, 202);
@@ -115,10 +115,6 @@
         .btn:hover { 
             background-color: rgb(67, 56, 202); 
         }
-        .btn:disabled { 
-            background-color: rgb(156, 163, 175); 
-            cursor: not-allowed; 
-        }
         .modal { 
             display: none; 
             position: fixed; 
@@ -129,6 +125,7 @@
             background: rgba(0,0,0,0.5); 
             justify-content: center; 
             align-items: center; 
+            z-index: 100;
         }
         .modal-content { 
             background: rgb(255, 255, 255); 
@@ -137,6 +134,14 @@
             max-width: 450px; 
             width: 100%; 
             text-align: center; 
+        }
+        .select-slot {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0 20px 0;
+            border-radius: 8px;
+            border: 1px solid rgb(209, 213, 219);
+            font-size: 1em;
         }
         .meet-link { 
             display: inline-block; 
@@ -159,10 +164,32 @@
             <p>Explore vetted startups and schedule 1-on-1 Google Meet calls directly.</p>
         </div>
         <div class="nav-buttons">
-            <a href="/register" class="btn-register">🚀 Register Startup</a>
-            <a href="/admin" class="btn-admin">⚙️ Admin</a>
+            {% if session.get('user_id') %}
+                <span style="font-weight: 600; color: #374151;">
+                    👤 {{ session.get('user_name') }} ({{ session.get('role')|capitalize }})
+                </span>
+                <a href="/logout" class="btn-admin">Sign Out</a>
+            {% else %}
+                <a href="/login" class="btn-admin">Log In</a>
+                <a href="/signup" class="btn-register">🚀 Register / Sign Up</a>
+            {% endif %}
         </div>
     </header>
+
+    {% if session.get('role') == 'founder' and my_bookings %}
+    <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+        <h3 style="margin-top:0; color: #065f46;">📅 Booked Calls with Investors</h3>
+        <ul style="margin-bottom: 0;">
+            {% for booking in my_bookings %}
+            <li>
+                <strong>{{ booking.investor_name }}</strong> 
+                {% if booking.firm_name %}({{ booking.firm_name }}){% endif %} 
+                scheduled a call for <strong>{{ booking.time_slot }}</strong>.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     <div class="grid">
         {% for startup in startups %}
@@ -173,7 +200,7 @@
                 <div class="stage">Seeking: {{ startup.funding_stage }}</div>
                 <div class="desc">{{ startup.description }}</div>
             </div>
-            <button class="btn" onclick="bookMeeting({{ startup.id }}, this)">
+            <button class="btn" onclick="openBookingModal({{ startup.id }}, '{{ startup.name }}')">
                 🤝 Book 30-Min Call
             </button>
         </div>
@@ -181,50 +208,85 @@
     </div>
 </div>
 
-<!-- Confirmation Modal Popup -->
+<!-- Time Slot Selection Modal -->
+<div class="modal" id="bookingModal">
+    <div class="modal-content">
+        <h3 id="bookingStartupTitle" style="margin-top:0;">Schedule Meeting</h3>
+        <p style="color: #666; font-size: 0.95em;">Select your preferred call time slot:</p>
+        
+        <select id="timeSlotSelect" class="select-slot">
+            {% for slot in available_slots %}
+            <option value="{{ slot }}">{{ slot }}</option>
+            {% endfor %}
+        </select>
+
+        <button id="confirmBookBtn" class="btn" onclick="confirmBooking()">Confirm & Book Call</button>
+        <button class="btn" style="background: rgb(107, 114, 128); margin-top: 10px;" onclick="closeBookingModal()">Cancel</button>
+    </div>
+</div>
+
+<!-- Confirmation Success Modal -->
 <div class="modal" id="resultModal">
     <div class="modal-content">
         <h2 style="color: rgb(16, 185, 129); margin-top: 0;">🎉 Meeting Booked!</h2>
-        <p id="modalMessage">Your meeting has been scheduled and calendar invites sent.</p>
+        <p id="modalMessage">Your meeting has been scheduled.</p>
         <a id="meetLink" class="meet-link" href="#" target="_blank">Join Google Meet</a>
         <br><br>
-        <button class="btn" style="background: rgb(107, 114, 128);" onclick="closeModal()">Close</button>
+        <button class="btn" style="background: rgb(107, 114, 128);" onclick="closeResultModal()">Close</button>
     </div>
 </div>
 
 <script>
-async function bookMeeting(startupId, btnElement) {
-    const originalText = btnElement.innerText;
-    btnElement.innerText = "⏳ Scheduling...";
-    btnElement.disabled = true;
+let selectedStartupId = null;
+
+function openBookingModal(startupId, startupName) {
+    selectedStartupId = startupId;
+    document.getElementById('bookingStartupTitle').innerText = `Schedule Call with ${startupName}`;
+    document.getElementById('bookingModal').style.display = 'flex';
+}
+
+function closeBookingModal() {
+    document.getElementById('bookingModal').style.display = 'none';
+}
+
+function closeResultModal() {
+    document.getElementById('resultModal').style.display = 'none';
+}
+
+async function confirmBooking() {
+    const timeSlot = document.getElementById('timeSlotSelect').value;
+    const btn = document.getElementById('confirmBookBtn');
+    
+    btn.innerText = "⏳ Confirming...";
+    btn.disabled = true;
 
     try {
         const response = await fetch('/api/book-meeting', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ startup_id: startupId })
+            body: JSON.stringify({ 
+                startup_id: selectedStartupId,
+                time_slot: timeSlot
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
+            closeBookingModal();
             document.getElementById('modalMessage').innerText = 
-                `Meeting scheduled with ${data.startup_name} for ${data.time}.`;
+                `Meeting scheduled: ${data.meeting_title} for ${data.time}.`;
             document.getElementById('meetLink').href = data.meet_url;
             document.getElementById('resultModal').style.display = 'flex';
         } else {
-            alert('Error: ' + data.error);
+            alert('Notice: ' + data.error);
         }
     } catch (err) {
         alert('Failed to connect to the server.');
     } finally {
-        btnElement.innerText = originalText;
-        btnElement.disabled = false;
+        btn.innerText = "Confirm & Book Call";
+        btn.disabled = false;
     }
-}
-
-function closeModal() {
-    document.getElementById('resultModal').style.display = 'none';
 }
 </script>
 
