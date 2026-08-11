@@ -15,19 +15,19 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Users Table (Supports Founders and Investors)
+    # Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT NOT NULL, -- 'founder' or 'investor'
+            role TEXT NOT NULL,
             firm_name TEXT
         )
     ''')
 
-    # Startups Table
+    # Startups Table with pitch_deck_url column
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS startups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,6 +36,7 @@ def init_db():
             category TEXT NOT NULL,
             funding_stage TEXT NOT NULL,
             description TEXT NOT NULL,
+            pitch_deck_url TEXT,
             approved INTEGER DEFAULT 1,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
@@ -58,7 +59,6 @@ def init_db():
 
 init_db()
 
-# --- BACKWARD COMPATIBILITY REDIRECTS ---
 @app.route('/register')
 def register_redirect():
     return redirect(url_for('signup'))
@@ -67,14 +67,13 @@ def register_redirect():
 def admin_redirect():
     return redirect(url_for('login'))
 
-# --- AUTHENTICATION ROUTES ---
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         name = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
-        role = request.form.get('role') # 'founder' or 'investor'
+        role = request.form.get('role')
         firm_name = request.form.get('firm_name', '')
 
         hashed_password = generate_password_hash(password)
@@ -93,11 +92,12 @@ def signup():
                 category = request.form.get('category')
                 funding_stage = request.form.get('funding_stage')
                 description = request.form.get('description')
+                pitch_deck_url = request.form.get('pitch_deck_url', '')
 
                 cursor.execute('''
-                    INSERT INTO startups (user_id, name, category, funding_stage, description)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (user_id, company_name, category, funding_stage, description))
+                    INSERT INTO startups (user_id, name, category, funding_stage, description, pitch_deck_url)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (user_id, company_name, category, funding_stage, description, pitch_deck_url))
 
             conn.commit()
             conn.close()
@@ -107,7 +107,6 @@ def signup():
             return render_template('signup.html', error="Email already registered!")
 
     return render_template('signup.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -129,14 +128,11 @@ def login():
 
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('index'))
 
-
-# --- MAIN DIRECTORY ROUTE ---
 @app.route('/')
 def index():
     conn = get_db_connection()
@@ -165,19 +161,14 @@ def index():
     
     return render_template('index.html', startups=startups, available_slots=available_slots, my_bookings=my_bookings)
 
-
-# --- BOOKING API ROUTE ---
 @app.route('/api/book-meeting', methods=['POST'])
 def book_meeting():
     if 'user_id' not in session or session.get('role') != 'investor':
-        return jsonify({"success": False, "error": "Only logged-in investors can book meetings. Please log in or sign up as an investor."})
+        return jsonify({"success": False, "error": "Only logged-in investors can book meetings. Please log in as an investor."})
 
     data = request.get_json()
     startup_id = data.get('startup_id')
     selected_time = data.get('time_slot')
-
-    if not startup_id or not selected_time:
-        return jsonify({"success": False, "error": "Startup ID and time slot are required."})
 
     conn = get_db_connection()
     startup = conn.execute('SELECT * FROM startups WHERE id = ?', (startup_id,)).fetchone()

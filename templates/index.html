@@ -4,182 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investor & Startup Matchmaking Platform</title>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background-color: rgb(244, 246, 249); 
-            margin: 0; 
-            padding: 40px; 
-        }
-        .container { 
-            max-width: 1000px; 
-            margin: 0 auto; 
-        }
-        header { 
-            margin-bottom: 30px; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        h1 { 
-            margin: 0 0 10px 0; 
-            color: rgb(26, 26, 26); 
-        }
-        p { 
-            color: rgb(102, 102, 102); 
-            font-size: 1.1em; 
-            margin: 0;
-        }
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .btn-register {
-            background-color: rgb(79, 70, 229);
-            color: #ffffff;
-            padding: 10px 18px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        .btn-register:hover {
-            background-color: rgb(67, 56, 202);
-        }
-        .btn-admin {
-            background-color: transparent;
-            color: rgb(75, 85, 99);
-            border: 1px solid rgb(209, 213, 219);
-            padding: 10px 18px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            display: inline-block;
-        }
-        .btn-admin:hover {
-            background-color: rgb(229, 231, 235);
-        }
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
-            gap: 20px; 
-        }
-        .card { 
-            background: rgb(255, 255, 255); 
-            border-radius: 12px; 
-            padding: 24px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: space-between; 
-        }
-        .tag { 
-            display: inline-block; 
-            background: rgb(238, 242, 255); 
-            color: rgb(79, 70, 229); 
-            padding: 4px 10px; 
-            border-radius: 6px; 
-            font-size: 0.85em; 
-            font-weight: 600; 
-            margin-bottom: 12px; 
-        }
-        .card h3 { 
-            margin: 0 0 8px 0; 
-            color: rgb(17, 24, 39); 
-        }
-        .stage { 
-            color: rgb(5, 150, 105); 
-            font-weight: 600; 
-            font-size: 0.9em; 
-            margin-bottom: 12px; 
-        }
-        .desc { 
-            color: rgb(75, 85, 99); 
-            font-size: 0.95em; 
-            line-height: 1.5; 
-            margin-bottom: 20px; 
-        }
-        .btn { 
-            background-color: rgb(79, 70, 229); 
-            color: rgb(255, 255, 255); 
-            border: none; 
-            padding: 12px 18px; 
-            border-radius: 8px; 
-            font-weight: 600; 
-            cursor: pointer; 
-            width: 100%; 
-        }
-        .btn:hover { 
-            background-color: rgb(67, 56, 202); 
-        }
-        .modal { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 100;
-        }
-        .modal-content { 
-            background: rgb(255, 255, 255); 
-            padding: 30px; 
-            border-radius: 12px; 
-            max-width: 450px; 
-            width: 100%; 
-            text-align: center; 
-        }
-        .select-slot {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0 20px 0;
-            border-radius: 8px;
-            border: 1px solid rgb(209, 213, 219);
-            font-size: 1em;
-        }
-        .meet-link { 
-            display: inline-block; 
-            margin-top: 15px; 
-            padding: 10px 20px; 
-            background: rgb(16, 185, 129); 
-            color: rgb(255, 255, 255); 
-            text-decoration: none; 
-            border-radius: 6px; 
-            font-weight: bold; 
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen p-6 md:p-12">
 
-<div class="container">
-    <header>
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 pb-6 border-b border-slate-200">
         <div>
-            <h1>Dealflow Matchmaking Directory</h1>
-            <p>Explore vetted startups and schedule 1-on-1 Google Meet calls directly.</p>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dealflow Matchmaking Directory</h1>
+            <p class="text-slate-500 mt-1">Explore vetted startups, review pitch decks, and schedule 1-on-1 calls.</p>
         </div>
-        <div class="nav-buttons">
+        <div class="flex items-center gap-3">
             {% if session.get('user_id') %}
-                <span style="font-weight: 600; color: #374151;">
+                <span class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
                     👤 {{ session.get('user_name') }} ({{ session.get('role')|capitalize }})
                 </span>
-                <a href="/logout" class="btn-admin">Sign Out</a>
+                <a href="/logout" class="text-sm font-semibold text-slate-600 hover:text-slate-900 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition">Sign Out</a>
             {% else %}
-                <a href="/login" class="btn-admin">Log In</a>
-                <a href="/signup" class="btn-register">🚀 Register / Sign Up</a>
+                <a href="/login" class="text-sm font-semibold text-slate-700 hover:text-slate-900 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition">Log In</a>
+                <a href="/signup" class="text-sm font-semibold bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm">🚀 Register / Sign Up</a>
             {% endif %}
         </div>
     </header>
 
     {% if session.get('role') == 'founder' and my_bookings %}
-    <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-        <h3 style="margin-top:0; color: #065f46;">📅 Booked Calls with Investors</h3>
-        <ul style="margin-bottom: 0;">
+    <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-xl mb-8">
+        <h3 class="text-emerald-800 font-bold text-lg mb-2">📅 Scheduled Calls with Investors</h3>
+        <ul class="space-y-1 text-emerald-900 text-sm">
             {% for booking in my_bookings %}
             <li>
                 <strong>{{ booking.investor_name }}</strong> 
@@ -191,48 +43,59 @@
     </div>
     {% endif %}
 
-    <div class="grid">
+    <!-- Startup Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for startup in startups %}
-        <div class="card">
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between hover:shadow-md transition">
             <div>
-                <span class="tag">{{ startup.category }}</span>
-                <h3>{{ startup.name }}</h3>
-                <div class="stage">Seeking: {{ startup.funding_stage }}</div>
-                <div class="desc">{{ startup.description }}</div>
+                <div class="flex justify-between items-start mb-3">
+                    <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-md">{{ startup.category }}</span>
+                    <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{{ startup.funding_stage }}</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">{{ startup.name }}</h3>
+                <p class="text-slate-600 text-sm leading-relaxed mb-6">{{ startup.description }}</p>
             </div>
-            <button class="btn" onclick="openBookingModal({{ startup.id }}, '{{ startup.name }}')">
-                🤝 Book 30-Min Call
-            </button>
+
+            <div class="space-y-2">
+                {% if startup.pitch_deck_url %}
+                <a href="{{ startup.pitch_deck_url }}" target="_blank" class="w-full flex items-center justify-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-sm py-2.5 rounded-lg border border-slate-300 transition">
+                    📄 View Pitch Deck ↗
+                </a>
+                {% endif %}
+                <button onclick="openBookingModal({{ startup.id }}, '{{ startup.name }}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm py-2.5 rounded-lg transition shadow-sm">
+                    🤝 Book 30-Min Call
+                </button>
+            </div>
         </div>
         {% endfor %}
     </div>
 </div>
 
 <!-- Time Slot Selection Modal -->
-<div class="modal" id="bookingModal">
-    <div class="modal-content">
-        <h3 id="bookingStartupTitle" style="margin-top:0;">Schedule Meeting</h3>
-        <p style="color: #666; font-size: 0.95em;">Select your preferred call time slot:</p>
+<div id="bookingModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-xl">
+        <h3 id="bookingStartupTitle" class="text-lg font-bold text-slate-800 mb-1">Schedule Meeting</h3>
+        <p class="text-sm text-slate-500 mb-4">Select your preferred call time slot:</p>
         
-        <select id="timeSlotSelect" class="select-slot">
+        <select id="timeSlotSelect" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm mb-4">
             {% for slot in available_slots %}
             <option value="{{ slot }}">{{ slot }}</option>
             {% endfor %}
         </select>
 
-        <button id="confirmBookBtn" class="btn" onclick="confirmBooking()">Confirm & Book Call</button>
-        <button class="btn" style="background: rgb(107, 114, 128); margin-top: 10px;" onclick="closeBookingModal()">Cancel</button>
+        <button id="confirmBookBtn" onclick="confirmBooking()" class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition text-sm mb-2">Confirm & Book Call</button>
+        <button onclick="closeBookingModal()" class="w-full bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg hover:bg-slate-300 transition text-sm">Cancel</button>
     </div>
 </div>
 
 <!-- Confirmation Success Modal -->
-<div class="modal" id="resultModal">
-    <div class="modal-content">
-        <h2 style="color: rgb(16, 185, 129); margin-top: 0;">🎉 Meeting Booked!</h2>
-        <p id="modalMessage">Your meeting has been scheduled.</p>
-        <a id="meetLink" class="meet-link" href="#" target="_blank">Join Google Meet</a>
-        <br><br>
-        <button class="btn" style="background: rgb(107, 114, 128);" onclick="closeResultModal()">Close</button>
+<div id="resultModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-xl">
+        <h2 class="text-xl font-bold text-emerald-600 mb-2">🎉 Meeting Booked!</h2>
+        <p id="modalMessage" class="text-sm text-slate-600 mb-4">Your meeting has been scheduled.</p>
+        <a id="meetLink" href="#" target="_blank" class="inline-block bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-lg text-sm hover:bg-emerald-700 transition mb-4">Join Google Meet</a>
+        <br>
+        <button onclick="closeResultModal()" class="w-full bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg hover:bg-slate-300 transition text-sm">Close</button>
     </div>
 </div>
 
@@ -242,15 +105,18 @@ let selectedStartupId = null;
 function openBookingModal(startupId, startupName) {
     selectedStartupId = startupId;
     document.getElementById('bookingStartupTitle').innerText = `Schedule Call with ${startupName}`;
-    document.getElementById('bookingModal').style.display = 'flex';
+    document.getElementById('bookingModal').classList.remove('hidden');
+    document.getElementById('bookingModal').classList.add('flex');
 }
 
 function closeBookingModal() {
-    document.getElementById('bookingModal').style.display = 'none';
+    document.getElementById('bookingModal').classList.add('hidden');
+    document.getElementById('bookingModal').classList.remove('flex');
 }
 
 function closeResultModal() {
-    document.getElementById('resultModal').style.display = 'none';
+    document.getElementById('resultModal').classList.add('hidden');
+    document.getElementById('resultModal').classList.remove('flex');
 }
 
 async function confirmBooking() {
@@ -277,7 +143,8 @@ async function confirmBooking() {
             document.getElementById('modalMessage').innerText = 
                 `Meeting scheduled: ${data.meeting_title} for ${data.time}.`;
             document.getElementById('meetLink').href = data.meet_url;
-            document.getElementById('resultModal').style.display = 'flex';
+            document.getElementById('resultModal').classList.remove('hidden');
+            document.getElementById('resultModal').classList.add('flex');
         } else {
             alert('Notice: ' + data.error);
         }
