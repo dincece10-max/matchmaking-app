@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up | Dealflow Platform</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f6f9; padding: 40px; }
+        .card { max-width: 450px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        input, select, textarea { width: 100%; padding: 10px; margin: 10px 0 15px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .btn { background: #4f46e5; color: white; padding: 12px; border: none; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; }
+        .founder-fields { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Create Your Account</h2>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST">
+        <label>I am registering as:</label>
+        <select name="role" id="roleSelect" onchange="toggleRoleFields()" required>
+            <option value="investor">Investor / Angel</option>
+            <option value="founder">Startup Founder</option>
+        </select>
+
+        <label>Full Name</label>
+        <input type="text" name="name" required placeholder="Jane Doe">
+
+        <label>Email Address</label>
+        <input type="email" name="email" required placeholder="jane@venturecap.com">
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <!-- Investor-specific field -->
+        <div id="investorFields">
+            <label>Firm / Fund Name (Optional)</label>
+            <input type="text" name="firm_name" placeholder="Acme Capital">
+        </div>
+
+        <!-- Founder-specific fields -->
+        <div id="founderFields" class="founder-fields">
+            <hr>
+            <h3>Startup Details</h3>
+            <label>Company Name</label>
+            <input type="text" name="company_name" placeholder="Alpha AI">
+
+            <label>Category / Sector</label>
+            <input type="text" name="category" placeholder="Fintech, SaaS, HealthTech">
+
+            <label>Funding Stage Seeking</label>
+            <input type="text" name="funding_stage" placeholder="Pre-Seed ($250k)">
+
+            <label>Short Description</label>
+            <textarea name="description" rows="3" placeholder="Brief elevator pitch..."></textarea>
+        </div>
+
+        <button type="submit" class="btn">Sign Up</button>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="/login">Log In</a></p>
+</div>
+
+<script>
+function toggleRoleFields() {
+    const role = document.getElementById('roleSelect').value;
+    document.getElementById('founderFields').style.display = role === 'founder' ? 'block' : 'none';
+    document.getElementById('investorFields').style.display = role === 'investor' ? 'block' : 'none';
+}
+</script>
+
+</body>
+</html>

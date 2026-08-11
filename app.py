@@ -1,213 +1,201 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug 10 13:50:52 2026
-
-@author: User
-"""
-
-import os.path
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 
 app = Flask(__name__)
+app.secret_key = "super-secret-key-change-this-in-production"
 DB_NAME = "matchmaking.db"
-SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-# --- 1. SQLITE DATABASE SETUP ---
-def init_db():
-    """Creates the matchmaking database table if it doesn't exist."""
+def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db_connection()
     cursor = conn.cursor()
+    
+    # Users Table (Supports both Founders and Investors)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL, -- 'founder' or 'investor'
+            firm_name TEXT     -- Applicable for investors/funds
+        )
+    ''')
+
+    # Startups Table (Linked to Founder User ID)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS startups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
             name TEXT NOT NULL,
             category TEXT NOT NULL,
             funding_stage TEXT NOT NULL,
             description TEXT NOT NULL,
-            founder_email TEXT NOT NULL,
-            is_approved INTEGER DEFAULT 0
+            approved INTEGER DEFAULT 1,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+    
+    # Bookings Table (Links Investor to Startup)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            startup_id INTEGER,
+            investor_id INTEGER,
+            time_slot TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (startup_id) REFERENCES startups (id),
+            FOREIGN KEY (investor_id) REFERENCES users (id)
         )
     ''')
     conn.commit()
     conn.close()
 
-init_db()  # Run database initialization automatically
+init_db()
 
+# --- AUTHENTICATION ROUTES ---
 
-# --- 2. GOOGLE CALENDAR LOGIC ---
-def get_calendar_credentials() -> Credentials:
-    creds = None
-    folder_path = os.path.dirname(os.path.abspath(__file__))
-    token_file_path = os.path.join(folder_path, 'token.json')
-    
-    possible_names = ['credentials.json', 'credentials.json.json', 'credentials.json.txt', 'credentials']
-    cred_file = None
-    for name in possible_names:
-        full_path = os.path.join(folder_path, name)
-        if os.path.exists(full_path):
-            cred_file = full_path
-            break
-
-    if os.path.exists(token_file_path):
-        creds = Credentials.from_authorized_user_file(token_file_path, SCOPES)
-        
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not cred_file:
-                raise FileNotFoundError("Missing 'credentials.json' in project folder!")
-            flow = InstalledAppFlow.from_client_secrets_file(cred_file, SCOPES)
-            creds = flow.run_local_server(port=0)
-            
-        with open(token_file_path, 'w') as token_file:
-            token_file.write(creds.to_json())
-            
-    return creds
-
-
-def create_google_meet_event(summary: str, description: str, start_time: datetime, emails: list) -> str:
-    creds = get_calendar_credentials()
-    service = build('calendar', 'v3', credentials=creds)
-    end_time = start_time + timedelta(minutes=30)
-
-    event = {
-        'summary': summary,
-        'description': description,
-        'start': {'dateTime': start_time.isoformat(), 'timeZone': 'UTC'},
-        'end': {'dateTime': end_time.isoformat(), 'timeZone': 'UTC'},
-        'attendees': [{'email': email} for email in emails],
-        'conferenceData': {
-            'createRequest': {
-                'requestId': f"meet-{int(start_time.timestamp())}",
-                'conferenceSolutionKey': {'type': 'hangoutsMeet'}
-            }
-        }
-    }
-
-    event_result = service.events().insert(
-        calendarId='primary',
-        body=event,
-        conferenceDataVersion=1,
-        sendUpdates='all'
-    ).execute()
-
-    return event_result.get('hangoutLink')
-
-
-# --- 3. WEB ROUTES ---
-
-# Public Directory: Shows ONLY approved startups from database
-@app.route('/')
-def home():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    startups = cursor.execute('SELECT * FROM startups WHERE is_approved = 1').fetchall()
-    conn.close()
-    return render_template('index.html', startups=startups)
-
-
-# Registration Form: Where founders submit startup details
-# --- WEB ROUTES ---
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
     if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role') # 'founder' or 'investor'
+        firm_name = request.form.get('firm_name', '')
+
+        hashed_password = generate_password_hash(password)
+
+        conn = get_db_connection()
         try:
-            name = request.form.get('name')
-            category = request.form.get('category')
-            funding_stage = request.form.get('funding_stage')
-            description = request.form.get('description')
-            founder_email = request.form.get('founder_email')
-
-            print(f"📥 Received submission: {name}, {founder_email}")  # Debug print
-
-            conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO startups (name, category, funding_stage, description, founder_email, is_approved)
-                VALUES (?, ?, ?, ?, ?, 0)
-            ''', (name, category, funding_stage, description, founder_email))
+                INSERT INTO users (name, email, password, role, firm_name)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, email, hashed_password, role, firm_name))
+            user_id = cursor.lastrowid
+
+            # If user is a founder, also create their startup record
+            if role == 'founder':
+                company_name = request.form.get('company_name')
+                category = request.form.get('category')
+                funding_stage = request.form.get('funding_stage')
+                description = request.form.get('description')
+
+                cursor.execute('''
+                    INSERT INTO startups (user_id, name, category, funding_stage, description)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (user_id, company_name, category, funding_stage, description))
+
             conn.commit()
             conn.close()
+            return redirect(url_for('login', registered=True))
+        except sqlite3.IntegrityError:
+            conn.close()
+            return render_template('signup.html', error="Email already registered!")
 
-            print("✅ Successfully inserted into database!")  # Debug print
-            return render_template('register.html', success=True)
-
-        except Exception as e:
-            print(f"❌ DATABASE ERROR ON REGISTER: {e}")  # Prints error in Spyder console
-            return render_template('register.html', success=False, error=str(e))
-
-    return render_template('register.html', success=False)
-# Admin Dashboard: Where YOU approve pending startups
-@app.route('/admin')
-def admin_dashboard():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    pending = cursor.execute('SELECT * FROM startups WHERE is_approved = 0').fetchall()
-    approved = cursor.execute('SELECT * FROM startups WHERE is_approved = 1').fetchall()
-    conn.close()
-    return render_template('admin.html', pending=pending, approved=approved)
+    return render_template('signup.html')
 
 
-# Approve Route: Updates database record to is_approved = 1
-@app.route('/admin/approve')
-def approve_startup():
-    startup_id = request.args.get('id')
-    if startup_id:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute('UPDATE startups SET is_approved = 1 WHERE id = ?', (startup_id,))
-        conn.commit()
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        conn = get_db_connection()
+        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         conn.close()
-    return redirect(url_for('admin_dashboard'))
+
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['user_name'] = user['name']
+            session['role'] = user['role']
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error="Invalid email or password.")
+
+    return render_template('login.html')
 
 
-# Meeting Booking Endpoint
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+
+# --- MAIN DIRECTORY ROUTE ---
+
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    startups = conn.execute('SELECT * FROM startups WHERE approved = 1').fetchall()
+    
+    # If logged in as Founder, fetch their bookings from investors
+    my_bookings = []
+    if session.get('role') == 'founder':
+        founder_startup = conn.execute('SELECT id FROM startups WHERE user_id = ?', (session['user_id'],)).fetchone()
+        if founder_startup:
+            my_bookings = conn.execute('''
+                SELECT b.time_slot, u.name as investor_name, u.firm_name
+                FROM bookings b
+                JOIN users u ON b.investor_id = u.id
+                WHERE b.startup_id = ?
+            ''', (founder_startup['id'],)).fetchall()
+
+    conn.close()
+    
+    available_slots = [
+        "Tomorrow at 10:00 AM",
+        "Tomorrow at 02:00 PM",
+        "Tomorrow at 04:30 PM",
+        "Thursday at 11:00 AM",
+        "Friday at 03:00 PM"
+    ]
+    
+    return render_template('index.html', startups=startups, available_slots=available_slots, my_bookings=my_bookings)
+
+
+# --- BOOKING API ROUTE ---
+
 @app.route('/api/book-meeting', methods=['POST'])
 def book_meeting():
-    data = request.json
-    startup_id = data.get('startup_id')
+    if 'user_id' not in session or session.get('role') != 'investor':
+        return jsonify({"success": False, "error": "Only logged-in investors can book meetings. Please sign in as an investor."})
 
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    startup = cursor.execute('SELECT * FROM startups WHERE id = ?', (startup_id,)).fetchone()
-    conn.close()
+    data = request.get_json()
+    startup_id = data.get('startup_id')
+    selected_time = data.get('time_slot')
+
+    conn = get_db_connection()
+    startup = conn.execute('SELECT * FROM startups WHERE id = ?', (startup_id,)).fetchone()
 
     if not startup:
-        return jsonify({"success": False, "error": "Startup not found"}), 404
+        conn.close()
+        return jsonify({"success": False, "error": "Startup not found."})
 
-    try:
-        meeting_time = datetime.utcnow() + timedelta(days=1)
-        
-        meet_url = create_google_meet_event(
-            summary=f"Matchmaking Session: Investor x {startup['name']}",
-            description=f"30-minute introductory meeting with {startup['name']}.",
-            start_time=meeting_time,
-            emails=["your_email@gmail.com", startup['founder_email']]
-        )
+    # Record booking linked to investor ID
+    conn.execute('INSERT INTO bookings (startup_id, investor_id, time_slot) VALUES (?, ?, ?)',
+                 (startup_id, session['user_id'], selected_time))
+    conn.commit()
+    conn.close()
 
-        return jsonify({
-            "success": True,
-            "meet_url": meet_url,
-            "startup_name": startup['name'],
-            "time": meeting_time.strftime("%Y-%m-%d %H:00 UTC")
-        })
+    investor_name = session.get('user_name')
+    meeting_title = f"{startup['name']} x {investor_name}"
 
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
+    return jsonify({
+        "success": True,
+        "startup_name": startup['name'],
+        "investor_name": investor_name,
+        "meeting_title": meeting_title,
+        "time": selected_time,
+        "meet_url": "https://meet.google.com/new"
+    })
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
